@@ -1,0 +1,27 @@
+[package]
+name = "kubers"
+version = "0.1.0"
+authors = ["Лач <iam@lach.pw>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+kube = "0.43.0"
+kube-derive = "0.43.0"
+k8s-openapi = { version = "0.10.0", default-features = false, features = ["v1_18"] }
+tokio = { version = "0.3.5", features = ["full"] }
+http = "0.2.1"
+serde = "1.0.117"
+futures = "0.3.8"
+slog = "2.7.0"
+slog-term = "2.6.0"
+slog-async = "2.5.0"
+
+jrsonnet-evaluator = "0.3.2"
+jrsonnet-cli = { repo = "https://github.com/CertainLach/jrsonnet/", rev = "23c027a07375b1ee5b76ecb7f5adf5f9637397f8" }
+quick-error = "2.0.0"
+
+[dependencies.clap]
+git = "https://github.com/clap-rs/clap"
+rev = "48d308a8ab9e96d4b21336e428feee420dbac51d"
