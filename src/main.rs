@@ -166,7 +166,7 @@ async fn main_real() -> Result<()> {
         templated,
         |obj, manager, path| {
             log::warn!(
-                "conflict with {} in {:#?} at {}, ignoring",
+                "conflict with {} in {} at {}, ignoring",
                 manager,
                 obj,
                 fieldpath::PathBuf(path.to_owned())

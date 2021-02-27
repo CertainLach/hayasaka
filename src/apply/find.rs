@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fmt::Display,
+    fmt::{self, Display},
 };
 
 use http::Request;
@@ -19,11 +19,27 @@ pub struct ObjectKind {
     pub kind: String,
 }
 
+impl Display for ObjectKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}", self.api_version, self.kind)
+    }
+}
+
 /// Represents object location
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 pub struct ObjectLocation {
     pub name: String,
     pub namespace: Option<String>,
+}
+
+impl Display for ObjectLocation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name)?;
+        if let Some(ns) = &self.namespace {
+            write!(f, " in {}", ns)?;
+        }
+        Ok(())
+    }
 }
 
 /// Represents unique object
@@ -32,6 +48,12 @@ pub struct Object {
     #[serde(flatten)]
     pub kind: ObjectKind,
     pub metadata: ObjectLocation,
+}
+
+impl Display for Object {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}", self.kind, self.metadata)
+    }
 }
 
 impl Object {
@@ -69,12 +91,6 @@ pub struct ObjectListItem {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 struct ObjectList {
     pub items: Vec<ObjectListItem>,
-}
-
-impl Display for ObjectKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {}", self.api_version, self.kind)
-    }
 }
 
 /// Represents object kind metadata
