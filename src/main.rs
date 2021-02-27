@@ -45,9 +45,9 @@ macro_rules! unwrap {
 #[derive(Clap)]
 #[clap(help_heading = "DEPLOY")]
 struct DeployOpts {
-    /// Add value for kubers label
-    #[clap(long, short = 'n')]
-    namespace: String,
+    /// Set deployment name
+    /// It is used for Gc (pruning), server-side apply, and as default namespace name
+    name: String,
     /// Remove objects which present in apiserver, but missing in templated array
     #[clap(long)]
     prune: bool,
@@ -131,7 +131,7 @@ async fn main_real() -> Result<()> {
     let mut config = Config::infer()
         .await
         .map_err(|e| anyhow!("failed to load config: {}", e))?;
-    config.default_ns = opts.deploy.namespace.clone();
+    config.default_ns = opts.deploy.name.clone();
     let client =
         kube::Client::try_from(config).map_err(|e| anyhow!("failed to construct client: {}", e))?;
 
@@ -139,7 +139,7 @@ async fn main_real() -> Result<()> {
     es.with_stdlib();
     es.add_native(
         "kubers.helmTemplate".into(),
-        Rc::new(create_helm_template(opts.deploy.namespace.clone().into())),
+        Rc::new(create_helm_template(opts.deploy.name.clone().into())),
     );
 
     let kubers_obj = es.evaluate_snippet_raw(
@@ -158,12 +158,12 @@ async fn main_real() -> Result<()> {
         }
     };
 
-    let legacy_manager = format!("hayasaka.lach.pw/{}", opts.deploy.namespace);
+    let legacy_manager = format!("hayasaka.lach.pw/{}", opts.deploy.name);
     apply::apply_multi(
         client,
-        &opts.deploy.namespace,
-        &format!("hayasaka.delta.rocks/{}", opts.deploy.namespace),
-        ("hayasaka.delta.rocks", &opts.deploy.namespace),
+        &opts.deploy.name,
+        &format!("hayasaka.delta.rocks/{}", opts.deploy.name),
+        ("hayasaka.delta.rocks", &opts.deploy.name),
         templated,
         |obj, manager, path| {
             if manager == legacy_manager {
