@@ -1,162 +1,201 @@
-#![feature(async_closure)]
+#![feature(bindings_after_at)]
 
-mod find;
-mod kubemodel;
+mod apply;
+mod helm;
 
 use clap::Clap;
-use http::{Request, Response};
+use helm::create_helm_template;
 use jrsonnet_cli::{ConfigureState, GeneralOpts, InputOpts};
-use jrsonnet_evaluator::{EvaluationState, ObjValue, Val};
-use k8s_openapi::{
-	apimachinery::pkg::apis::meta::v1::{APIGroup, APIGroupList, APIResourceList, ListMeta},
-	List,
+use jrsonnet_evaluator::error::Result;
+use jrsonnet_evaluator::{EvaluationState, Val};
+use jrsonnet_interner::IStr;
+use kube::Config;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::{
+    convert::{TryFrom, TryInto},
+    path::PathBuf,
+    rc::Rc,
 };
-use kube::{
-	api::{Api, ListParams, Meta, PatchParams, PatchStrategy, WatchEvent},
-	Client, Resource,
-};
-use kubemodel::{ObjectId, ObjectType};
-use quick_error::quick_error;
-use std::{path::PathBuf, rc::Rc};
+use tokio::runtime::Builder;
 
-quick_error! {
-	#[derive(Debug)]
-	pub enum Error {
-		JrsonnetError(err: jrsonnet_evaluator::error::LocError) {
-			from()
-		}
-		MissingFieldError(err: String) {}
-	}
+#[macro_export]
+macro_rules! bail {
+    ($($err: tt)*) => {
+        return Err(anyhow::anyhow!($($err)*).into())
+    };
 }
-type Result<T> = std::result::Result<T, Error>;
+
+macro_rules! anyhow {
+    ($($err: tt)*) => {
+        jrsonnet_evaluator::error::LocError::from(anyhow::anyhow!($($err)*))
+    };
+}
+
+#[macro_export]
+macro_rules! unwrap {
+    ($value: expr, $err: tt) => {
+        match $value {
+            Some(v) => v,
+            None => bail!($err),
+        }
+    };
+}
+
+#[derive(Clap)]
+#[clap(help_heading = "DEPLOY")]
+struct DeployOpts {
+    /// Add value for kubers label
+    #[clap(long, short = 'n')]
+    namespace: String,
+    /// Remove objects which present in apiserver, but missing in templated array
+    #[clap(long)]
+    prune: bool,
+}
 
 #[derive(Clap)]
 #[clap(version = "0.1.0", author = "Lach")]
 struct Opts {
-	#[clap(flatten)]
-	jsonnet: GeneralOpts,
-	#[clap(flatten)]
-	input: InputOpts,
-	// JsonnetArgs
-	// #[clap(subcommand)]
-	// sub: SubCommand,
+    #[clap(flatten)]
+    deploy: DeployOpts,
+    #[clap(flatten)]
+    jsonnet: GeneralOpts,
+    #[clap(flatten)]
+    input: InputOpts,
 }
 
-trait Unstructured {
-	fn is_list(&self) -> Result<bool>;
-	fn obj_type(&self) -> Result<ObjectType>;
-	fn id(&self) -> Result<ObjectId>;
+fn flatten(val: Val, out: &mut Vec<Val>) -> Result<()> {
+    match val {
+        Val::Arr(a) => {
+            for item in a.iter() {
+                let val = item.unwrap();
+                flatten(val, out)?;
+            }
+        }
+        Val::Obj(obj) => {
+            let vis = obj.fields_visibility();
+            if vis.get(&IStr::from("kind")).is_some()
+                && vis.get(&IStr::from("apiVersion")).is_some()
+            {
+                out.push(Val::Obj(obj));
+            } else {
+                for field in vis {
+                    flatten(obj.get(field.0)?.unwrap(), out)?;
+                }
+            }
+        }
+        _ => unreachable!(),
+    }
+
+    Ok(())
 }
 
-impl Unstructured for ObjValue {
-	fn is_list(&self) -> Result<bool> {
-		// This check is enought
-		// https://github.com/kubernetes/apimachinery/blob/master/pkg/apis/meta/v1/unstructured/unstructured.go#L54
-		Ok(self.get("items".into())?.is_some())
-	}
-	fn obj_type(&self) -> Result<ObjectType> {
-		let api_version = self
-			.get("apiVersion".into())?
-			.ok_or_else(|| Error::MissingFieldError("apiVersion".into()))?
-			.try_cast_str("kind should be string")?;
-		let kind = self
-			.get("kind".into())?
-			.ok_or_else(|| Error::MissingFieldError("kind".into()))?
-			.try_cast_str("kind should be string")?;
-		Ok(ObjectType { api_version, kind })
-	}
-	fn id(&self) -> Result<ObjectId> {
-		// let name =
-		let metadata = self
-			.get("metadata".into())?
-			.ok_or_else(|| Error::MissingFieldError("metadata".into()))?
-			.try_cast_obj("metadata should be object")?;
-		let name = metadata
-			.get("name".into())?
-			.ok_or_else(|| Error::MissingFieldError("name".into()))?
-			.try_cast_str("name")?;
-		let namespace = metadata.get("name".into())?.map(|v| v.try_cast_str("name"));
-		if let Some(namespace) = namespace {
-			Ok(ObjectId {
-				ty: self.obj_type()?,
-				name,
-				namespace: Some(namespace?),
-			})
-		} else {
-			Ok(ObjectId {
-				ty: self.obj_type()?,
-				name,
-				namespace: None,
-			})
-		}
-	}
+fn main_template(
+    evaluator: EvaluationState,
+    opts: &GeneralOpts,
+    input: &InputOpts,
+) -> Result<Vec<Value>> {
+    opts.configure(&evaluator).unwrap();
+
+    let value = evaluator.evaluate_file_raw(&PathBuf::from(&input.input))?;
+    let value = evaluator.with_tla(value)?;
+    let mut out = Vec::new();
+
+    evaluator.run_in_state(|| {
+        flatten(value, &mut out).unwrap();
+    });
+    let mut json_out = Vec::new();
+    evaluator.run_in_state(|| {
+        for value in out {
+            json_out.push((&value).try_into().unwrap());
+        }
+    });
+
+    Ok(json_out)
 }
 
-pub fn flatten(items: ObjValue) -> Result<Vec<ObjValue>> {
-	let mut out = vec![];
-	for key in items.visible_fields().iter().cloned() {
-		let item = items
-			.get(key)?
-			.unwrap()
-			.try_cast_obj("top level object should have objects as keys")?;
-		if item.is_list()? {
-			let items = item
-				.get("items".into())?
-				.unwrap()
-				.try_cast_array("list object items should be array")?;
-			for item in items.iter() {
-				out.push(
-					item.clone()
-						.try_cast_obj("list object items elements should be object")?,
-				);
-			}
-		} else {
-			out.push(item);
-		}
-	}
-	Ok(out)
+#[derive(Serialize, Deserialize)]
+struct UnstructuredMetadata {
+    name: String,
+    namespace: Option<String>,
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-	use slog::{o, Drain};
-	let decorator = slog_term::TermDecorator::new().build();
-	let drain = slog_term::FullFormat::new(decorator).build().fuse();
-	let drain = slog_async::Async::new(drain).build().fuse();
+async fn main_real() -> Result<()> {
+    if std::env::var_os("RUST_LOG").is_none() {
+        std::env::set_var("RUST_LOG", "info");
+    }
 
-	let log = slog::Logger::root(drain, o!());
+    env_logger::init();
+    let opts: Opts = Opts::parse();
 
-	let opts: Opts = Opts::parse();
+    let mut config = Config::infer()
+        .await
+        .map_err(|e| anyhow!("failed to load config: {}", e))?;
+    config.default_ns = opts.deploy.namespace.clone();
+    let client =
+        kube::Client::try_from(config).map_err(|e| anyhow!("failed to construct client: {}", e))?;
 
-	let evaluator = EvaluationState::default();
-	opts.jsonnet.configure(&evaluator).unwrap();
+    let es = EvaluationState::default();
+    es.with_stdlib();
+    es.add_native(
+        "kubers.helmTemplate".into(),
+        Rc::new(create_helm_template(opts.deploy.namespace.clone().into())),
+    );
 
-	let value = evaluator
-		.evaluate_file_raw(&PathBuf::from(opts.input.input))
-		.unwrap();
-	let value = evaluator.with_tla(value).unwrap();
+    let kubers_obj = es.evaluate_snippet_raw(
+        Rc::new(PathBuf::from("kubers prelude")),
+        include_str!("kubersApi.jsonnet").into(),
+    )?;
+    es.settings_mut()
+        .globals
+        .insert("kubers".into(), kubers_obj);
+    let templated = match es.run_in_state(|| main_template(es.clone(), &opts.jsonnet, &opts.input))
+    {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("{}", es.stringify_err(&e));
+            std::process::exit(1);
+        }
+    };
 
-	evaluator.run_in_state(|| {
-		let obj = value.try_cast_obj("Top level output should be object")?;
-		let items = flatten(obj)?;
-		for item in items {
-			println!("Type = {:?}", item.id()?);
-			// println!("{}",)
-		}
-		Ok(()) as Result<()>
-	})?;
-	// opts.input.evaluate()
-	// match opts.sub {
-	// 	SubCommand::Test(cmd) => {
-	// 		slog::info!(log, "Searching for already deployed");
-	// 		let client = Client::try_default().await?;
-	// 		let labelled =
-	// 			find::find_all_labeled_items(log.clone(), client, "test".to_owned()).await?;
-	// 		// println!("{:?}", labelled);
-	// 		slog::info!(log, "Found {} already deployed resources", labelled.len());
-	// 		// let apiGroups: Api<APIGroup> = Api::all(client);
-	// 		// let list = apiGroups.list().await?;
-	// 	}
-	// }
-	Ok(())
+    apply::apply_multi(
+        client,
+        &opts.deploy.namespace,
+        &format!("hayasaka.delta.rocks/{}", opts.deploy.namespace),
+        ("hayasaka.delta.rocks", &opts.deploy.namespace),
+        templated,
+        |obj, manager, path| {
+            log::warn!(
+                "conflict with {} in {:#?} at {}, ignoring",
+                manager,
+                obj,
+                fieldpath::PathBuf(path.to_owned())
+            );
+            apply::ResolutionStrategy::Ignore
+        },
+        true,
+    )
+    .await
+    .map_err(anyhow::Error::from)?;
+
+    Ok(())
+}
+
+fn main_tokio() {
+    Builder::new_current_thread()
+        .enable_time()
+        .enable_io()
+        .build()
+        .unwrap()
+        .block_on(main_real())
+        .unwrap();
+}
+
+fn main() {
+    std::thread::Builder::new()
+        .stack_size(500 * 1024 * 1024)
+        .spawn(main_tokio)
+        .unwrap()
+        .join()
+        .unwrap();
 }
