@@ -139,10 +139,23 @@ fn helm_template(
     if let Some(helmval_a) = helmval_a {
         let json_patch = json_patch::diff(&helmval_a, &helmval_b);
         if !json_patch.0.is_empty() {
+            let mut out = "impurity found between two helm runs:".to_owned();
             for p in json_patch.0 {
-                eprintln!("{:?}", p);
+                match p {
+                    json_patch::PatchOperation::Add(a) => {
+                        write!(out, "\n+ {}", a.path)
+                    }
+                    json_patch::PatchOperation::Remove(r) => {
+                        write!(out, "\n- {}", r.path)
+                    }
+                    json_patch::PatchOperation::Replace(r) => {
+                        write!(out, "\nr {}", r.path)
+                    }
+                    _ => unreachable!(),
+                }
+                .unwrap()
             }
-            crate::bail!("impurity found")
+            crate::bail!("{}", out)
         }
     }
 
