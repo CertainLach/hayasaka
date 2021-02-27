@@ -95,9 +95,7 @@ async fn apply_internal_resolve_conflicts(
             return Ok(());
         }
         Err(kube::Error::Api(apierror)) if apierror.code == 409 => {
-            log::info!("{}", serde_json::to_string_pretty(target).unwrap());
             let mut removed_paths = Vec::<PathBuf>::new();
-            log::info!("{}", apierror.message);
             for conflict in parse::conflict_error_parser::message(&apierror.message).unwrap() {
                 for path in conflict.1 {
                     if removed_paths
@@ -111,7 +109,6 @@ async fn apply_internal_resolve_conflicts(
                     }
                     match conflict_resolver(&conflict.0, &path) {
                         ResolutionStrategy::Ignore => {
-                            log::info!("Removing field {}", path);
                             let mut path: &[Element] = &path;
                             if path.ends_with(&[Element::Field("value".to_owned())])
                                 && !target.has_path(&path)
