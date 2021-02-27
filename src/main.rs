@@ -158,6 +158,7 @@ async fn main_real() -> Result<()> {
         }
     };
 
+    let legacy_manager = format!("hayasaka.lach.pw/{}", opts.deploy.namespace);
     apply::apply_multi(
         client,
         &opts.deploy.namespace,
@@ -165,6 +166,10 @@ async fn main_real() -> Result<()> {
         ("hayasaka.delta.rocks", &opts.deploy.namespace),
         templated,
         |obj, manager, path| {
+            if manager == legacy_manager {
+                log::warn!("upgrading hayasaka version in {}", obj);
+                return apply::ResolutionStrategy::Force;
+            }
             log::warn!(
                 "conflict with {} in {} at {}, ignoring",
                 manager,
