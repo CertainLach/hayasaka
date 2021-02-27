@@ -10,13 +10,46 @@ use serde::Deserialize;
 pub type RuntimeTypeData = BTreeMap<ObjectKind, ObjectData>;
 
 /// Represents object runtime type
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq)]
 pub struct ObjectKind {
     // extensions/v1
     #[serde(rename = "apiVersion")]
     pub api_version: String,
     // CustomResourceDefinition
     pub kind: String,
+}
+impl ObjectKind {
+    fn versionless_version(&self) -> &str {
+        let index = self
+            .api_version
+            .find("/")
+            .unwrap_or_else(|| self.api_version.len());
+        let api_version = &self.api_version[0..index];
+        if api_version == "extensions" && self.kind == "Ingress" {
+            return "networking.k8s.io";
+        }
+        api_version
+    }
+}
+
+impl PartialEq for ObjectKind {
+    fn eq(&self, other: &Self) -> bool {
+        self.versionless_version() == other.versionless_version() && self.kind == other.kind
+    }
+}
+impl PartialOrd for ObjectKind {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(
+            self.versionless_version()
+                .cmp(&other.versionless_version())
+                .then_with(|| self.kind.cmp(&other.kind)),
+        )
+    }
+}
+impl Ord for ObjectKind {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
 }
 
 impl Display for ObjectKind {
