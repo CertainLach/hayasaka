@@ -9,6 +9,7 @@ use jrsonnet_parser::{Param, ParamsDesc, Visibility};
 use jrsonnet_types::ty;
 use rustc_hash::FxHashMap;
 use serde_json::Value;
+use std::fmt::Write;
 use std::{convert::TryInto, hash::BuildHasherDefault, path::PathBuf, rc::Rc, thread};
 use template::template_helm;
 
@@ -20,7 +21,7 @@ pub fn create_helm_template(namespace: Rc<str>) -> NativeCallback {
             Param("c".into(), None),
             Param("d".into(), None),
         ])),
-        move |path, args| helm_template(&namespace, path, args, false),
+        move |path, args| helm_template(&namespace, path, args, true),
     )
 }
 
