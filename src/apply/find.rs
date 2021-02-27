@@ -89,31 +89,6 @@ impl Display for Object {
     }
 }
 
-impl Object {
-    /// Remove all extra info, which prevents object list comparsion
-    ///
-    /// I.e v1 Pod is also returned by api while searching for v1beta2 Pod
-    /// Or networking.k8s.io Ingress can be returned as extensions Ingress by apiserver
-    pub fn versionless(&self) -> Self {
-        let index = self
-            .kind
-            .api_version
-            .find("/")
-            .unwrap_or_else(|| self.kind.api_version.len());
-        let mut api_version = (&self.kind.api_version[0..index]).to_owned();
-        if api_version == "extensions" && self.kind.kind == "Ingress" {
-            api_version = "networking.k8s.io".to_owned();
-        };
-        Object {
-            kind: ObjectKind {
-                api_version,
-                kind: self.kind.kind.clone(),
-            },
-            metadata: self.metadata.clone(),
-        }
-    }
-}
-
 /// Represents object list item
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 pub struct ObjectListItem {
@@ -211,16 +186,13 @@ pub async fn find_all_labeled_items(
                 .await;
             if let Ok(data) = data {
                 for object in data.items {
-                    out.insert(
-                        Object {
-                            kind: ObjectKind {
-                                api_version: version.clone(),
-                                kind: resource.kind.clone(),
-                            },
-                            metadata: object.metadata,
-                        }
-                        .versionless(),
-                    );
+                    out.insert(Object {
+                        kind: ObjectKind {
+                            api_version: version.clone(),
+                            kind: resource.kind.clone(),
+                        },
+                        metadata: object.metadata,
+                    });
                 }
             } else {
                 log::warn!(
@@ -231,50 +203,48 @@ pub async fn find_all_labeled_items(
             }
         }
     }
-    // Groups processed in parallel
     for group in client.list_api_groups().await?.groups {
-        for version in group.versions {
-            for resource in client
-                .list_api_group_resources(&version.group_version)
-                .await?
-                .resources
+        let version = group
+            .preferred_version
+            .as_ref()
+            .unwrap_or_else(|| group.versions.last().unwrap());
+        for resource in client
+            .list_api_group_resources(&version.group_version)
+            .await?
+            .resources
+        {
+            if resource.name.contains('/') {
+                continue;
+            }
+            let data = client
+                .request::<ObjectList>(
+                    Request::builder()
+                        .uri(&format!(
+                            "/apis/{}/{}?labelSelector={}",
+                            version.group_version, resource.name, label_selector,
+                        ))
+                        .body(vec![])
+                        .map_err(kube::Error::HttpError)?,
+                )
+                .await;
+            if let Ok(data) = data {
+                for object in data.items {
+                    out.insert(Object {
+                        kind: ObjectKind {
+                            api_version: version.group_version.clone(),
+                            kind: resource.kind.clone(),
+                        },
+                        metadata: object.metadata,
+                    });
+                }
+            } else if !(group.name == "authentication.k8s.io"
+                || group.name == "authorization.k8s.io")
             {
-                if resource.name.contains('/') {
-                    continue;
-                }
-                let data = client
-                    .request::<ObjectList>(
-                        Request::builder()
-                            .uri(&format!(
-                                "/apis/{}/{}?labelSelector={}",
-                                version.group_version, resource.name, label_selector,
-                            ))
-                            .body(vec![])
-                            .map_err(kube::Error::HttpError)?,
-                    )
-                    .await;
-                if let Ok(data) = data {
-                    for object in data.items {
-                        out.insert(
-                            Object {
-                                kind: ObjectKind {
-                                    api_version: version.group_version.clone(),
-                                    kind: resource.kind.clone(),
-                                },
-                                metadata: object.metadata,
-                            }
-                            .versionless(),
-                        );
-                    }
-                } else if !(group.name == "authentication.k8s.io"
-                    || group.name == "authorization.k8s.io")
-                {
-                    log::warn!(
-                        "No access, assuming there should be no {} {} deployed",
-                        group.name,
-                        resource.name
-                    );
-                }
+                log::warn!(
+                    "No access, assuming there should be no {} {} deployed",
+                    group.name,
+                    resource.name
+                );
             }
         }
     }
