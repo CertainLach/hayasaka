@@ -3,7 +3,7 @@ mod parse;
 
 use fieldpath::{Element, FieldpathExt, Path, PathBuf};
 use find::{Object, ObjectKind, RuntimeTypeData};
-use kube::Client;
+use kube::{api::DeleteParams, Client};
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
 use thiserror::Error;
@@ -31,12 +31,7 @@ pub enum Error {
 }
 pub type Result<T> = std::result::Result<T, Error>;
 
-fn make_url(
-    namespace: &str,
-    object: &Object,
-    field_manager: &str,
-    types: &RuntimeTypeData,
-) -> String {
+fn make_url(namespace: &str, object: &Object, types: &RuntimeTypeData) -> String {
     let ns_prefix = object
         .metadata
         .namespace
@@ -52,7 +47,7 @@ fn make_url(
         .unwrap_or(String::new());
 
     format!(
-        "/{prefix}/{group_version}/{ns_prefix}{kind}/{name}?fieldManager={field_manager}",
+        "/{prefix}/{group_version}/{ns_prefix}{kind}/{name}",
         prefix = if object.kind.api_version.contains('/') {
             "apis"
         } else {
@@ -62,7 +57,6 @@ fn make_url(
         ns_prefix = ns_prefix,
         kind = types.get(&object.kind).unwrap().plural,
         name = object.metadata.name,
-        field_manager = field_manager,
     )
 }
 
@@ -79,8 +73,9 @@ async fn apply_internal_resolve_conflicts(
 
     // dry run
     let dry_run_base_url = format!(
-        "{}&dryRun=All",
-        make_url(namespace, &object, &manager, types)
+        "{}?fieldManager={}&dryRun=All",
+        make_url(namespace, &object, types),
+        manager,
     );
 
     let req = http::Request::patch(&dry_run_base_url)
@@ -140,14 +135,33 @@ async fn apply_internal_force(
 
     // force run
     let force_base_url = format!(
-        "{}&force=true",
-        make_url(namespace, &object, &manager, types)
+        "{}?fieldManager={}&force=true",
+        make_url(namespace, &object, types),
+        manager,
     );
 
     let req = http::Request::patch(&force_base_url)
         .header("Accept", "application/json")
         .header("Content-Type", "application/apply-patch+yaml")
         .body(serde_json::to_vec(&target)?)
+        .map_err(kube::Error::HttpError)?;
+
+    let _result: Value = client.request(req).await?;
+    Ok(())
+}
+
+async fn remove(client: Client, object: &Object, types: &RuntimeTypeData) -> Result<()> {
+    let url = format!("{}", make_url("", object, types));
+
+    let req = http::Request::delete(&url)
+        .header("Accept", "application/json")
+        .body(
+            serde_json::to_vec(&DeleteParams {
+                grace_period_seconds: Some(0),
+                ..Default::default()
+            })
+            .unwrap(),
+        )
         .map_err(kube::Error::HttpError)?;
 
     let _result: Value = client.request(req).await?;
@@ -206,7 +220,7 @@ pub async fn apply_multi(
         .await
         .unwrap();
 
-        created.insert(unstructured.versionless());
+        created.insert(unstructured);
     }
 
     for item in target {
@@ -218,7 +232,13 @@ pub async fn apply_multi(
         let to_remove = found.difference(&created);
 
         for item in to_remove {
-            log::warn!("Should remove: {:?}", item);
+            // Endpoints copies Service labels
+            if item.kind.api_version == "v1" && item.kind.kind == "Endpoints" {
+                continue;
+            }
+
+            log::warn!("pruning {}", item);
+            remove(client.clone(), &item, &types).await?
         }
     }
 
