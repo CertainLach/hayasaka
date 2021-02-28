@@ -57,7 +57,11 @@ else if value.apiVersion == "v1" && value.kind == "Service" then fixService(valu
 else if value.apiVersion == "autoscaling/v2beta1" && value.kind == "HorizontalPodAutoscaler" then fixHPA(value)
 else value;
 
+local nativeHelmTemplate = std.native("kubers.helmTemplate");
+
+local helmTemplate(name, package, values, purifier = function(key, value) value) =
+                nativeHelmTemplate(name, package, values, function(key, value) fixServerSideApply(purifier(key, value))) tailstrict;
+
 {
-	helmTemplate: function(name, package, values, purifier = function(key, value) value) 
-                std.native("kubers.helmTemplate")(name, package, values, function(key, value) fixServerSideApply(purifier(key, value))) tailstrict,
+	helmTemplate:: helmTemplate,
 }
