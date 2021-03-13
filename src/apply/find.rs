@@ -194,7 +194,7 @@ pub async fn find_all_labeled_items(
                         metadata: object.metadata,
                     });
                 }
-            } else {
+            } else if !(version == "v1" && resource.name == "bindings") {
                 log::warn!(
                     "No access, assuming there should be no {} {} deployed",
                     version,
