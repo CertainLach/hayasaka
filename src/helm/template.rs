@@ -67,7 +67,9 @@ pub fn template_helm(
     })?;
 
     if !json_capture.success() {
-        return Err(Error::TemplatingError(IdentStr(json_capture.stderr_str().to_owned())));
+        return Err(Error::TemplatingError(IdentStr(
+            json_capture.stderr_str().to_owned(),
+        )));
     }
 
     let mut objects = Vec::new();
