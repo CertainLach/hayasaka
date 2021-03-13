@@ -6,7 +6,7 @@ mod helm;
 use clap::Clap;
 use helm::create_helm_template;
 use jrsonnet_cli::{ConfigureState, GeneralOpts, InputOpts};
-use jrsonnet_evaluator::error::Result;
+use jrsonnet_evaluator::{error::Result, LazyBinding, LazyVal, ObjMember, ObjValue};
 use jrsonnet_evaluator::{EvaluationState, Val};
 use jrsonnet_interner::IStr;
 use kube::Config;
@@ -67,9 +67,15 @@ struct Opts {
 fn flatten(val: Val, out: &mut Vec<Val>) -> Result<()> {
     match val {
         Val::Arr(a) => {
-            for item in a.iter() {
-                let val = item.unwrap();
-                flatten(val, out)?;
+            for (idx, item) in a.iter().enumerate() {
+                jrsonnet_evaluator::push_stack_frame(
+                    None,
+                    || format!("[{}]", idx),
+                    || {
+                        flatten(item?, out)?;
+                        Ok(())
+                    },
+                )?;
             }
         }
         Val::Obj(obj) => {
@@ -80,11 +86,21 @@ fn flatten(val: Val, out: &mut Vec<Val>) -> Result<()> {
                 out.push(Val::Obj(obj));
             } else {
                 for field in vis {
-                    flatten(obj.get(field.0)?.unwrap(), out)?;
+                    jrsonnet_evaluator::push_stack_frame(
+                        None,
+                        || format!(".{}", field.0),
+                        || {
+                            flatten(obj.get(field.0.clone())?.unwrap(), out)?;
+                            Ok(())
+                        },
+                    )?;
                 }
             }
         }
-        _ => unreachable!(),
+        _ => bail!(
+            "top level objects should be either arrays or objects, got {}",
+            val.value_type(),
+        ),
     }
 
     Ok(())
@@ -101,15 +117,15 @@ fn main_template(
     let value = evaluator.with_tla(value)?;
     let mut out = Vec::new();
 
-    evaluator.run_in_state(|| {
-        flatten(value, &mut out).unwrap();
-    });
+    evaluator.run_in_state(|| flatten(value, &mut out))?;
+
     let mut json_out = Vec::new();
     evaluator.run_in_state(|| {
         for value in out {
-            json_out.push((&value).try_into().unwrap());
+            json_out.push((&value).try_into()?);
         }
-    });
+        Ok(()) as jrsonnet_evaluator::error::Result<()>
+    })?;
 
     Ok(json_out)
 }
