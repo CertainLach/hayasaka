@@ -10,7 +10,7 @@ peg::parser! {
                 count.parse().unwrap()
             };
         rule manager_using() -> String
-            = "using " ver:$(['a'..='z' | '0'..='9' | '/']+) {
+            = "using " ver:$(['a'..='z' | '0'..='9' | '/' | '.']+) {
                 ver.to_owned()
             }
         rule manager_prelude() -> String
@@ -84,6 +84,11 @@ pub mod tests {
                 ]
             )]
         );
+    }
+
+    #[test]
+    fn failed_using() {
+        conflict_error_parser::message(r#"Apply failed with 1 conflict: conflict with "kubectl-client-side-apply" using rbac.authorization.k8s.io/v1: .subjects"#).unwrap();
     }
 
     #[test]
