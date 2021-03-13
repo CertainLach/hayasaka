@@ -57,6 +57,14 @@ else if value.apiVersion == "v1" && value.kind == "Service" then fixService(valu
 else if value.apiVersion == "autoscaling/v2beta1" && value.kind == "HorizontalPodAutoscaler" then fixHPA(value)
 else value;
 
+local getHelmHook(value) = if value == null then null
+else if 'annotations' in value.metadata && 'helm.sh/hook' in value.metadata.annotations then value.metadata.annotations['helm.sh/hook']
+else null;
+
+local handleHelmHooks(value) = local hook = getHelmHook(value);
+if hook == 'test' then null
+else value;
+
 local nativeHelmTemplate = std.native("kubers.helmTemplate");
 
 local helmTemplate(name, package, values, purifier = function(key, value) value) =
