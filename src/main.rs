@@ -175,7 +175,7 @@ async fn main_real() -> Result<()> {
     };
 
     let legacy_manager = format!("hayasaka.lach.pw/{}", opts.deploy.name);
-    apply::apply_multi(
+    match apply::apply_multi(
         client,
         &opts.deploy.name,
         &format!("hayasaka.delta.rocks/{}", opts.deploy.name),
@@ -186,18 +186,40 @@ async fn main_real() -> Result<()> {
                 log::warn!("upgrading hayasaka version in {}", obj);
                 return apply::ResolutionStrategy::Force;
             }
+            if manager == "kubectl-client-side-apply" {
             log::warn!(
-                "conflict with {} in {} at {}, ignoring",
+                    "overriding user set value at {} in {}",
+                    fieldpath::PathBuf(path.to_owned()),
+                    obj
+                );
+                return apply::ResolutionStrategy::Force;
+            }
+            if manager == "k3s" {
+                log::warn!(
+                    "using cloud provider changes at {} in {}",
+                    fieldpath::PathBuf(path.to_owned()),
+                    obj
+                );
+                return apply::ResolutionStrategy::Ignore;
+            }
+            apply::ResolutionStrategy::Error(format!(
+                "conflict with {} in {} at {}",
                 manager,
                 obj,
                 fieldpath::PathBuf(path.to_owned())
-            );
-            apply::ResolutionStrategy::Ignore
+            ))
         },
         true,
     )
     .await
-    .map_err(anyhow::Error::from)?;
+    .map_err(anyhow::Error::from)
+    {
+        Ok(_) => {}
+        Err(e) => {
+            eprintln!("{}", e);
+            std::process::exit(1);
+        }
+    }
 
     Ok(())
 }
