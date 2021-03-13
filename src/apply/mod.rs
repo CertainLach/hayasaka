@@ -1,17 +1,23 @@
 mod find;
 mod parse;
 
-use fieldpath::{Element, FieldpathExt, Path, PathBuf};
+use fieldpath::{path, Element, FieldpathExt, Path, PathBuf};
 use find::{Object, ObjectKind, RuntimeTypeData};
 use kube::{api::DeleteParams, Client};
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
 use thiserror::Error;
 
+/// How to deal with conflict
 pub enum ResolutionStrategy {
+    /// Ignore change, field will be left as-is
     Ignore,
+    /// Ignore change, but add current manager as shared owner of field
     Share,
+    /// Force change, override field value, become owner
     Force,
+    /// Cancel apply, return error
+    Error(String),
 }
 
 #[derive(Error, Debug)]
@@ -20,6 +26,8 @@ pub enum Error {
     ObjectParseFailed(serde_json::Error),
     #[error("unknown object kind: {0}")]
     UnknownObjectKind(ObjectKind),
+    #[error("conflict resolution failed: {0}")]
+    ConflictResolverError(String),
     #[error("json error: {0}")]
     Json(#[from] serde_json::Error),
     #[error("kube error: {0}")]
@@ -71,39 +79,73 @@ async fn apply_internal_resolve_conflicts(
 ) -> Result<()> {
     let object: Object = serde_json::from_value(target.clone())?;
 
-    // dry run
-    let dry_run_base_url = format!(
-        "{}?fieldManager={}&dryRun=All",
-        make_url(namespace, &object, types),
-        manager,
-    );
+    log::trace!("Dry-run apply for {}", object);
 
-    let req = http::Request::patch(&dry_run_base_url)
+    let base_url = make_url(namespace, &object, types);
+    // dry run
+    let dry_run_base_url = format!("{}?fieldManager={}&dryRun=All", base_url, manager,);
+
+    let get_req = http::Request::get(&base_url)
+        .header("Accept", "application/json")
+        .body(vec![])
+        .map_err(kube::Error::HttpError)?;
+
+    let patch_req = http::Request::patch(&dry_run_base_url)
         .header("Accept", "application/json")
         .header("Content-Type", "application/apply-patch+yaml")
         .body(serde_json::to_vec(&target)?)
         .map_err(kube::Error::HttpError)?;
 
-    match client.request(req).await {
+    log::trace!("Loading current obj version");
+    let old_obj: Option<_> = match client.request(get_req).await {
+        Ok(v) => Some(v),
+        Err(kube::Error::Api(apierror)) if apierror.code == 404 => None,
+        Err(e) => return Err(e.into()),
+    }
+    .map(|mut v: Value| {
+        for path in [
+            path!(."metadata"."managedFields"),
+            path!(."metadata"."selfLink"),
+            path!(."metadata"."uid"),
+            path!(."metadata"."resourceVersion"),
+            path!(."metadata"."generation"),
+            path!(."metadata"."creationTimestamp"),
+            path!(."metadata"."annotations.kubectl.kubernetes.io/last-applied-configuration"),
+            path!(."status"),
+        ]
+        .iter()
+        {
+            let _res = v.remove_path(path);
+        }
+        v
+    });
+
+    log::trace!("= {}", serde_json::to_string_pretty(&old_obj).unwrap());
+
+    log::trace!("Running dry-run");
+    match client.request(patch_req).await {
         Ok(v) => {
             let _result: Value = v;
             return Ok(());
         }
         Err(kube::Error::Api(apierror)) if apierror.code == 409 => {
             let mut removed_paths = Vec::<PathBuf>::new();
+            log::warn!("{}", apierror.message);
             for conflict in parse::conflict_error_parser::message(&apierror.message).unwrap() {
                 for path in conflict.1 {
                     if removed_paths
                         .iter()
                         .any(|removed| path.starts_with(removed) || &path == removed)
                     {
-                        log::info!("Skipping {}", path);
+                        log::trace!("Path was already removed {}", path);
                         // this path was already removed during earlier conflict resolution,
                         // can't do anything more with it
                         continue;
                     }
+                    log::trace!("Handling conflict with {} at {}", conflict.0, path);
                     match conflict_resolver(&conflict.0, &path) {
                         ResolutionStrategy::Ignore => {
+                            log::trace!("- Ignoring");
                             let mut path: &[Element] = &path;
                             if path.ends_with(&[Element::Field("value".to_owned())])
                                 && !target.has_path(&path)
@@ -113,8 +155,15 @@ async fn apply_internal_resolve_conflicts(
                             target.remove_path(&path)?;
                             removed_paths.push(path.into());
                         }
-                        ResolutionStrategy::Share => unimplemented!("not needed for hayasaka"),
-                        ResolutionStrategy::Force => {}
+                        ResolutionStrategy::Share => {
+                            log::trace!("- Sharing");
+                            unimplemented!("not needed for hayasaka")
+                        }
+                        ResolutionStrategy::Force => log::trace!("- Forcing"),
+                        ResolutionStrategy::Error(e) => {
+                            log::trace!("- Erroring with {}", e);
+                            return Err(Error::ConflictResolverError(e));
+                        }
                     }
                 }
             }
@@ -217,8 +266,7 @@ pub async fn apply_multi(
             &types,
             |manager, path| conflict_resolver(&unstructured, manager, path),
         )
-        .await
-        .unwrap();
+        .await?;
 
         created.insert(unstructured);
     }
