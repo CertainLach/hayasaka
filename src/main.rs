@@ -165,6 +165,32 @@ async fn main_real() -> Result<()> {
     es.settings_mut()
         .globals
         .insert("kubers".into(), kubers_obj);
+    let deployment_obj = ObjValue::new_empty().extend_with_field(
+        "name".into(),
+        ObjMember {
+            add: false,
+            visibility: jrsonnet_parser::Visibility::Normal,
+            invoke: LazyBinding::Bound(LazyVal::new_resolved(Val::Str(
+                opts.deploy.name.clone().into(),
+            ))),
+            location: None,
+        },
+    );
+
+    let haya_obj = ObjValue::new_empty().extend_with_field(
+        "deployment".into(),
+        ObjMember {
+            add: false,
+            visibility: jrsonnet_parser::Visibility::Normal,
+            invoke: LazyBinding::Bound(LazyVal::new_resolved(Val::Obj(deployment_obj))),
+            location: None,
+        },
+    );
+
+    es.settings_mut()
+        .globals
+        .insert("_".into(), Val::Obj(haya_obj));
+
     let templated = match es.run_in_state(|| main_template(es.clone(), &opts.jsonnet, &opts.input))
     {
         Ok(v) => v,
@@ -187,7 +213,7 @@ async fn main_real() -> Result<()> {
                 return apply::ResolutionStrategy::Force;
             }
             if manager == "kubectl-client-side-apply" {
-            log::warn!(
+                log::warn!(
                     "overriding user set value at {} in {}",
                     fieldpath::PathBuf(path.to_owned()),
                     obj
