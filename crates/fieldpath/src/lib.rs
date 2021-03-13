@@ -9,10 +9,10 @@ pub use path::{Path, PathBuf};
 mod parse;
 pub use parse::parse;
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
+/// Construct &Path without parsing
+#[macro_export]
+macro_rules! path {
+    ($(.$text:literal)+) => {
+        &[$(::fieldpath::Element::StaticField($text)),+][..] as &fieldpath::Path
+    };
 }

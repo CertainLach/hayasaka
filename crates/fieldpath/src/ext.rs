@@ -33,6 +33,7 @@ impl FieldpathExt for Value {
     fn this_method(self: reference([Self]), comp: &Element) -> Result<ret_type> {
         match comp {
             Element::Field(field) => self.method(&field).ok_or(Error::FieldNotFound),
+            Element::StaticField(field) => self.method(&field).ok_or(Error::FieldNotFound),
             Element::Select(key, value) => match self {
                 Value::Array(items) => {
                     let mut found = None;
@@ -72,6 +73,10 @@ impl FieldpathExt for Value {
 
     fn remove_comp(&mut self, comp: &Element) -> Result<Option<Self>> {
         match comp {
+            Element::StaticField(field) => match self {
+                Value::Object(obj) => Ok(obj.remove(field.to_owned())),
+                _ => Err(Error::FieldNotFound),
+            },
             Element::Field(field) => match self {
                 Value::Object(obj) => Ok(obj.remove(field)),
                 _ => Err(Error::FieldNotFound),
@@ -113,6 +118,10 @@ impl FieldpathExt for Value {
 
     fn set_comp(&mut self, comp: &Element, target: Self) -> Result<Option<Self>> {
         match comp {
+            Element::StaticField(field) => match self {
+                Value::Object(obj) => Ok(obj.insert(field.to_string(), target)),
+                _ => Err(Error::FieldNotFound),
+            },
             Element::Field(field) => match self {
                 Value::Object(obj) => Ok(obj.insert(field.to_owned(), target)),
                 _ => Err(Error::FieldNotFound),
