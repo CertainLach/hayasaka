@@ -3,6 +3,7 @@
 mod apply;
 mod helm;
 
+use chrono::{SecondsFormat, Utc};
 use clap::Clap;
 use helm::create_helm_template;
 use jrsonnet_cli::{ConfigureState, GeneralOpts, InputOpts};
@@ -153,29 +154,32 @@ async fn main_real() -> Result<()> {
 
     let es = EvaluationState::default();
     es.with_stdlib();
-    es.add_native(
-        "kubers.helmTemplate".into(),
-        Rc::new(create_helm_template(opts.deploy.name.clone().into())),
-    );
-
-    let kubers_obj = es.evaluate_snippet_raw(
-        Rc::new(PathBuf::from("kubers prelude")),
-        include_str!("kubersApi.jsonnet").into(),
-    )?;
-    es.settings_mut()
-        .globals
-        .insert("kubers".into(), kubers_obj);
-    let deployment_obj = ObjValue::new_empty().extend_with_field(
-        "name".into(),
-        ObjMember {
-            add: false,
-            visibility: jrsonnet_parser::Visibility::Normal,
-            invoke: LazyBinding::Bound(LazyVal::new_resolved(Val::Str(
-                opts.deploy.name.clone().into(),
-            ))),
-            location: None,
-        },
-    );
+    let deployment_obj = ObjValue::new_empty()
+        .extend_with_field(
+            "name".into(),
+            ObjMember {
+                add: false,
+                visibility: jrsonnet_parser::Visibility::Normal,
+                invoke: LazyBinding::Bound(LazyVal::new_resolved(Val::Str(
+                    opts.deploy.name.clone().into(),
+                ))),
+                location: None,
+            },
+        )
+        .extend_with_field(
+            "deployedAt".into(),
+            ObjMember {
+                add: false,
+                visibility: jrsonnet_parser::Visibility::Normal,
+                invoke: LazyBinding::Bound(LazyVal::new_resolved(Val::Str({
+                    let utc = Utc::now()
+                        .to_rfc3339_opts(SecondsFormat::Millis, true)
+                        .replace(|c| c == 'T' || c == ':' || c == '.', "-");
+                    (&utc[..utc.len() - 1]).into()
+                }))),
+                location: None,
+            },
+        );
 
     let haya_obj = ObjValue::new_empty().extend_with_field(
         "deployment".into(),
@@ -191,6 +195,18 @@ async fn main_real() -> Result<()> {
         .globals
         .insert("_".into(), Val::Obj(haya_obj));
 
+    es.add_native(
+        "kubers.helmTemplate".into(),
+        Rc::new(create_helm_template(opts.deploy.name.clone().into())),
+    );
+
+    let kubers_obj = es.evaluate_snippet_raw(
+        Rc::new(PathBuf::from("kubers prelude")),
+        include_str!("kubersApi.jsonnet").into(),
+    )?;
+    es.settings_mut()
+        .globals
+        .insert("hayasaka".into(), kubers_obj);
     let templated = match es.run_in_state(|| main_template(es.clone(), &opts.jsonnet, &opts.input))
     {
         Ok(v) => v,
