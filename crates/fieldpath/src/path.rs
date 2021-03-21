@@ -16,6 +16,16 @@ impl From<&Path> for PathBuf {
     }
 }
 
+impl PathBuf {
+    pub fn from_rfc6901(str: String) -> Self {
+        let mut out = Vec::new();
+        for part in str.split('/').skip(1) {
+            out.push(Element::Field(part.replace("~1", "/").replace("~0", "~")))
+        }
+        Self(out)
+    }
+}
+
 impl Display for PathBuf {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for part in self.0.iter() {
