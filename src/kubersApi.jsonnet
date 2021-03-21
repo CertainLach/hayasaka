@@ -1,3 +1,9 @@
+local alwaysRecreate(value) = value + {
+    metadata+: {
+        name+: '-' + _.deployment.deployedAt,
+    },
+};
+
 local fixBadFieldMixin(obj, field, fixer) = {
     [if std.objectHas(obj, field) then field else null]: fixer(obj[field])
 };
@@ -15,7 +21,7 @@ local fixResources(resources) = if resources == null then null else resources + 
 };
 local fixContainer(container) = container + {
     ports: if std.objectHas(container, 'ports') then std.map(fixPort, container.ports) else [],
-    [if std.objectHas(container, 'resources') then 'resources' else null]: fixResources(container.resources), 
+    [if std.objectHas(container, 'resources') then 'resources' else null]: fixResources(container.resources),
 };
 local fixDeployment(deployment) = deployment + {
     spec+: {
@@ -57,19 +63,34 @@ else if value.apiVersion == "v1" && value.kind == "Service" then fixService(valu
 else if value.apiVersion == "autoscaling/v2beta1" && value.kind == "HorizontalPodAutoscaler" then fixHPA(value)
 else value;
 
-local getHelmHook(value) = if value == null then null
-else if 'annotations' in value.metadata && 'helm.sh/hook' in value.metadata.annotations then value.metadata.annotations['helm.sh/hook']
-else null;
+local getHelmHooks(value) = if value == null then []
+else if 'annotations' in value.metadata && value.metadata.annotations != null && 'helm.sh/hook' in value.metadata.annotations then std.split(value.metadata.annotations['helm.sh/hook'], ',')
+else [];
 
-local handleHelmHooks(value) = local hook = getHelmHook(value);
-if hook == 'test' then null
+local contains(array, item) = std.length(std.find(item, array)) != 0;
+
+local shouldHandleAsHook(value) = value.apiVersion == 'batch/v1' && value.kind == 'Job'
+                               || value.apiVersion == 'v1' && value.kind == 'Pod';
+local handleHelmHooks(value) = if value == null then null
+// Only handle jobs
+else if !shouldHandleAsHook(value) then value
+else local hooks = getHelmHooks(value);
+// Test are skipped for now
+if contains(hooks, 'test') then null
+// Hayasaka has its own object sorting, and we can't to wait for
+// tasks to complete, so we will just bail out on post hooks
+else if contains(hooks, 'pre-delete') || contains(hooks, 'post-delete') || contains(hooks, 'pre-rollback') || contains(hooks, 'post-rollback') then error 'can\'t use "' + std.join(', ', hooks) + '" hooks with hayasaka, design your tasks as stateless'
+// This task seems to be idempotent, so we are able to just 
+// always recreate it
+else if contains(hooks, 'pre-upgrade') || contains(hooks, 'post-upgrade') || contains(hooks, 'pre-install') || constains(hooks, 'post-install') then alwaysRecreate(value)
 else value;
 
 local nativeHelmTemplate = std.native("kubers.helmTemplate");
 
 local helmTemplate(name, package, values, purifier = function(key, value) value) =
-                nativeHelmTemplate(name, package, values, function(key, value) fixServerSideApply(purifier(key, value))) tailstrict;
+                nativeHelmTemplate(name, package, values, function(key, value) handleHelmHooks(fixServerSideApply(purifier(key, value)))) tailstrict;
 
 {
 	helmTemplate:: helmTemplate,
+    alwaysRecreate:: alwaysRecreate,
 }
