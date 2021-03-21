@@ -52,6 +52,9 @@ struct DeployOpts {
     /// Remove objects which present in apiserver, but missing in templated array
     #[clap(long)]
     prune: bool,
+    /// Ignore changes applied by specified controllers
+    #[clap(long)]
+    ignore_changes_by: Vec<String>,
 }
 
 #[derive(Clap)]
@@ -228,19 +231,12 @@ async fn main_real() -> Result<()> {
                 log::warn!("upgrading hayasaka version in {}", obj);
                 return apply::ResolutionStrategy::Force;
             }
-            if manager == "kubectl-client-side-apply" {
+            if manager == "k3s" || opts.deploy.ignore_changes_by.contains(&manager.to_owned()) {
                 log::warn!(
-                    "overriding user set value at {} in {}",
+                    "using changes at {} in {} (made by {})",
                     fieldpath::PathBuf(path.to_owned()),
-                    obj
-                );
-                return apply::ResolutionStrategy::Force;
-            }
-            if manager == "k3s" {
-                log::warn!(
-                    "using cloud provider changes at {} in {}",
-                    fieldpath::PathBuf(path.to_owned()),
-                    obj
+                    obj,
+                    manager,
                 );
                 return apply::ResolutionStrategy::Ignore;
             }
