@@ -144,13 +144,14 @@ fn helm_template(
             for p in json_patch.0 {
                 match p {
                     json_patch::PatchOperation::Add(a) => {
-                        write!(out, "\n+ {}", a.path)
+                        write!(out, "\n+ {}", fieldpath::PathBuf::from_rfc6901(a.path))
                     }
                     json_patch::PatchOperation::Remove(r) => {
-                        write!(out, "\n- {}", r.path)
+                        write!(out, "\n- {}", fieldpath::PathBuf::from_rfc6901(r.path))
                     }
                     json_patch::PatchOperation::Replace(r) => {
-                        write!(out, "\nr {}", r.path)
+                        let path = fieldpath::PathBuf::from_rfc6901(r.path);
+                        write!(out, "\nr {}\n  - {}\n  + {}", path, helmval_a.get_path(&path).unwrap(), helmval_b.get_path(&path).unwrap())
                     }
                     _ => unreachable!(),
                 }
