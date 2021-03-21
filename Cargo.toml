@@ -5,6 +5,7 @@ authors = ["Yaroslav Bolyukin <iam@lach.pw>"]
 edition = "2018"
 
 [dependencies]
+chrono = "0.4"
 kube = { version = "0.50.0" }
 rustc-hash = "1.1"
 kube-derive = "0.50.0"
