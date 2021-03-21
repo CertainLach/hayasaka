@@ -1,6 +1,7 @@
 mod template;
 
 use crate::bail;
+use fieldpath::FieldpathExt;
 use jrsonnet_evaluator::{
     error::Result, native::NativeCallback, unwrap_type, Context, FuncVal, LazyBinding, LazyVal,
     ObjMember, ObjValue, Val,
