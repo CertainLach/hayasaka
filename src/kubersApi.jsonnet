@@ -82,7 +82,7 @@ if contains(hooks, 'test') then null
 else if contains(hooks, 'pre-delete') || contains(hooks, 'post-delete') || contains(hooks, 'pre-rollback') || contains(hooks, 'post-rollback') then error 'can\'t use "' + std.join(', ', hooks) + '" hooks with hayasaka, design your tasks as stateless'
 // This task seems to be idempotent, so we are able to just 
 // always recreate it
-else if contains(hooks, 'pre-upgrade') || contains(hooks, 'post-upgrade') || contains(hooks, 'pre-install') || constains(hooks, 'post-install') then alwaysRecreate(value)
+else if contains(hooks, 'pre-upgrade') || contains(hooks, 'post-upgrade') || contains(hooks, 'pre-install') || contains(hooks, 'post-install') then alwaysRecreate(value)
 else value;
 
 local nativeHelmTemplate = std.native("kubers.helmTemplate");
