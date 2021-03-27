@@ -152,7 +152,13 @@ fn helm_template(
                     }
                     json_patch::PatchOperation::Replace(r) => {
                         let path = fieldpath::PathBuf::from_rfc6901(r.path);
-                        write!(out, "\nr {}\n  - {}\n  + {}", path, helmval_a.get_path(&path).unwrap(), helmval_b.get_path(&path).unwrap())
+                        write!(
+                            out,
+                            "\nr {}\n  - {}\n  + {}",
+                            path,
+                            helmval_a.get_path(&path).unwrap(),
+                            helmval_b.get_path(&path).unwrap()
+                        )
                     }
                     _ => unreachable!(),
                 }

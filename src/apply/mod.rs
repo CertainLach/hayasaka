@@ -283,7 +283,9 @@ pub async fn apply_multi(
             // Endpoints copies Service labels
             if item.kind.api_version == "v1" && item.kind.kind == "Endpoints" {
                 continue;
-            } else if item.kind.api_version == "discovery.k8s.io/v1beta1" && item.kind.kind == "EndpointSlice" {
+            } else if item.kind.api_version == "discovery.k8s.io/v1beta1"
+                && item.kind.kind == "EndpointSlice"
+            {
                 continue;
             }
 
