@@ -6,9 +6,9 @@ edition = "2018"
 
 [dependencies]
 chrono = "0.4"
-kube = { version = "0.50.0" }
+kube = { version = "0.51.0" }
 rustc-hash = "1.1"
-kube-derive = "0.50.0"
+kube-derive = "0.51.0"
 k8s-openapi = { version = "0.11.0", default-features = false, features = ["v1_20"] }
 tokio = { version = "1.1", features = ["full"] }
 http = "0.2.3"
@@ -27,19 +27,19 @@ thiserror = "1.0"
 anyhow = "1.0"
 duplicate = "0.2.9"
 peg = "0.6.3"
-fieldpath = {path = "./crates/fieldpath"}
+fieldpath = { path = "./crates/fieldpath" }
 
-serde_yaml = { git = "https://github.com/CertainLach/serde-yaml.git", branch = "feature/old-octals-quirk" }
+serde_yaml_with_quirks = "0.8.17"
 
-jrsonnet-evaluator = { git = "https://github.com/CertainLach/jrsonnet.git", branch = "kubers-qol", features = ["serde", "anyhow-error"] }
-jrsonnet-cli = { git = "https://github.com/CertainLach/jrsonnet.git", branch = "kubers-qol" }
-jrsonnet-interner = { git = "https://github.com/CertainLach/jrsonnet.git", branch = "kubers-qol" }
-jrsonnet-parser = { git = "https://github.com/CertainLach/jrsonnet.git", branch = "kubers-qol" }
-jrsonnet-types = { git = "https://github.com/CertainLach/jrsonnet.git", branch = "kubers-qol" }
+jrsonnet-evaluator = { git = "https://github.com/CertainLach/jrsonnet.git", branch = "master", features = ["serde", "anyhow-error"] }
+jrsonnet-cli = { git = "https://github.com/CertainLach/jrsonnet.git", branch = "master" }
+jrsonnet-interner = { git = "https://github.com/CertainLach/jrsonnet.git", branch = "master" }
+jrsonnet-parser = { git = "https://github.com/CertainLach/jrsonnet.git", branch = "master" }
+jrsonnet-types = { git = "https://github.com/CertainLach/jrsonnet.git", branch = "master" }
 
 [dependencies.clap]
 git = "https://github.com/clap-rs/clap"
-rev = "50fb4ca63dc7e8fb8aa2914de5c8a5b4413f2c62"
+rev = "52814b893c87e1c0350cae13fc1988fe2aa9886a"
 
 [workspace]
-members = ["crates/*"]
+members = ["crates/fieldpath"]

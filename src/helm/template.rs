@@ -5,7 +5,7 @@ use std::fmt::Display;
 use jrsonnet_evaluator::error::LocError;
 use serde::Deserialize;
 use serde_json::Value;
-use serde_yaml::DeserializingQuirks;
+use serde_yaml_with_quirks::DeserializingQuirks;
 use subprocess::{Exec, PopenError};
 use thiserror::Error;
 
@@ -28,7 +28,7 @@ pub enum Error {
     #[error("helm binary not found in path: {0}")]
     HelmBinaryNotFound(std::io::Error),
     #[error("failed to parse helm output: {0}")]
-    Yaml(#[from] serde_yaml::Error),
+    Yaml(#[from] serde_yaml_with_quirks::Error),
     #[error("spawn error: {0}")]
     PopenError(PopenError),
 }
@@ -73,7 +73,7 @@ pub fn template_helm(
     }
 
     let mut objects = Vec::new();
-    for value in serde_yaml::Deserializer::from_str_with_quirks(
+    for value in serde_yaml_with_quirks::Deserializer::from_str_with_quirks(
         &json_capture.stdout_str(),
         DeserializingQuirks { old_octals: true },
     ) {

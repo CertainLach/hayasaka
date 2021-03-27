@@ -123,7 +123,7 @@ dependencies = [
 [[package]]
 name = "clap"
 version = "3.0.0-beta.2"
-source = "git+https://github.com/clap-rs/clap?rev=50fb4ca63dc7e8fb8aa2914de5c8a5b4413f2c62#50fb4ca63dc7e8fb8aa2914de5c8a5b4413f2c62"
+source = "git+https://github.com/clap-rs/clap?rev=52814b893c87e1c0350cae13fc1988fe2aa9886a#52814b893c87e1c0350cae13fc1988fe2aa9886a"
 dependencies = [
  "atty",
  "bitflags",
@@ -134,14 +134,13 @@ dependencies = [
  "strsim",
  "termcolor",
  "textwrap",
- "unicode-width",
  "vec_map",
 ]
 
 [[package]]
 name = "clap_derive"
 version = "3.0.0-beta.2"
-source = "git+https://github.com/clap-rs/clap?rev=50fb4ca63dc7e8fb8aa2914de5c8a5b4413f2c62#50fb4ca63dc7e8fb8aa2914de5c8a5b4413f2c62"
+source = "git+https://github.com/clap-rs/clap?rev=52814b893c87e1c0350cae13fc1988fe2aa9886a#52814b893c87e1c0350cae13fc1988fe2aa9886a"
 dependencies = [
  "heck",
  "proc-macro-error",
@@ -177,6 +176,41 @@ name = "core-foundation-sys"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea221b5284a47e40033bf9b66f35f984ec0ea2931eb03505246cd27a963f981b"
+
+[[package]]
+name = "darling"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a06d4a9551359071d1890820e3571252b91229e0712e7c36b08940e603c5a8fc"
+dependencies = [
+ "darling_core",
+ "darling_macro",
+]
+
+[[package]]
+name = "darling_core"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b443e5fb0ddd56e0c9bfa47dc060c5306ee500cb731f2b91432dd65589a77684"
+dependencies = [
+ "fnv",
+ "ident_case",
+ "proc-macro2",
+ "quote",
+ "strsim",
+ "syn",
+]
+
+[[package]]
+name = "darling_macro"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0220073ce504f12a70efc4e7cdaea9e9b1b324872e7ad96a208056d7a638b81"
+dependencies = [
+ "darling_core",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "dirs-next"
@@ -427,7 +461,7 @@ dependencies = [
  "rustc-hash",
  "serde",
  "serde_json",
- "serde_yaml 0.8.17 (git+https://github.com/CertainLach/serde-yaml.git?branch=feature/old-octals-quirk)",
+ "serde_yaml_with_quirks",
  "subprocess",
  "tempfile",
  "thiserror",
@@ -550,6 +584,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ident_case"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
+
+[[package]]
 name = "idna"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -587,8 +627,8 @@ checksum = "dd25036021b0de88a0aff6b850051563c6516d0bf53f8638938edbb9de732736"
 
 [[package]]
 name = "jrsonnet-cli"
-version = "0.3.4"
-source = "git+https://github.com/CertainLach/jrsonnet.git?branch=kubers-qol#ec654c44d309eb26bb163be0d9a6b6bb60145d1c"
+version = "0.3.5"
+source = "git+https://github.com/CertainLach/jrsonnet.git?branch=master#cef41f1b5410aeff92a5385e5890d8743729e383"
 dependencies = [
  "clap",
  "jrsonnet-evaluator",
@@ -597,8 +637,8 @@ dependencies = [
 
 [[package]]
 name = "jrsonnet-evaluator"
-version = "0.3.4"
-source = "git+https://github.com/CertainLach/jrsonnet.git?branch=kubers-qol#ec654c44d309eb26bb163be0d9a6b6bb60145d1c"
+version = "0.3.5"
+source = "git+https://github.com/CertainLach/jrsonnet.git?branch=master#cef41f1b5410aeff92a5385e5890d8743729e383"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -619,8 +659,8 @@ dependencies = [
 
 [[package]]
 name = "jrsonnet-interner"
-version = "0.3.4"
-source = "git+https://github.com/CertainLach/jrsonnet.git?branch=kubers-qol#ec654c44d309eb26bb163be0d9a6b6bb60145d1c"
+version = "0.3.5"
+source = "git+https://github.com/CertainLach/jrsonnet.git?branch=master#cef41f1b5410aeff92a5385e5890d8743729e383"
 dependencies = [
  "rustc-hash",
  "serde",
@@ -628,8 +668,8 @@ dependencies = [
 
 [[package]]
 name = "jrsonnet-parser"
-version = "0.3.4"
-source = "git+https://github.com/CertainLach/jrsonnet.git?branch=kubers-qol#ec654c44d309eb26bb163be0d9a6b6bb60145d1c"
+version = "0.3.5"
+source = "git+https://github.com/CertainLach/jrsonnet.git?branch=master#cef41f1b5410aeff92a5385e5890d8743729e383"
 dependencies = [
  "jrsonnet-interner",
  "peg",
@@ -639,13 +679,13 @@ dependencies = [
 
 [[package]]
 name = "jrsonnet-stdlib"
-version = "0.3.4"
-source = "git+https://github.com/CertainLach/jrsonnet.git?branch=kubers-qol#ec654c44d309eb26bb163be0d9a6b6bb60145d1c"
+version = "0.3.5"
+source = "git+https://github.com/CertainLach/jrsonnet.git?branch=master#cef41f1b5410aeff92a5385e5890d8743729e383"
 
 [[package]]
 name = "jrsonnet-types"
-version = "0.3.4"
-source = "git+https://github.com/CertainLach/jrsonnet.git?branch=kubers-qol#ec654c44d309eb26bb163be0d9a6b6bb60145d1c"
+version = "0.3.5"
+source = "git+https://github.com/CertainLach/jrsonnet.git?branch=master#cef41f1b5410aeff92a5385e5890d8743729e383"
 dependencies = [
  "peg",
 ]
@@ -690,9 +730,9 @@ dependencies = [
 
 [[package]]
 name = "kube"
-version = "0.50.0"
+version = "0.51.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "459b1593a538fd0bb77e7133fdd3158c55e183affd0926337fa873986a741e0b"
+checksum = "8d47a55e9f881dc5027dcaf026670fa24b41f67926ab6517e2155488fe9c012a"
 dependencies = [
  "Inflector",
  "base64",
@@ -713,7 +753,7 @@ dependencies = [
  "pin-project",
  "serde",
  "serde_json",
- "serde_yaml 0.8.17 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_yaml",
  "static_assertions",
  "thiserror",
  "tokio",
@@ -725,11 +765,12 @@ dependencies = [
 
 [[package]]
 name = "kube-derive"
-version = "0.50.0"
+version = "0.51.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ae799f63607bad1f95ec65932616660393329f95064467ae50c54ddd46da6c8"
+checksum = "c069cf7fcfe148819d01d1ace64ed82d0bef2c5c27efd2dbc073ec4d210becb9"
 dependencies = [
  "Inflector",
+ "darling",
  "proc-macro2",
  "quote",
  "serde_json",
@@ -919,9 +960,9 @@ dependencies = [
 
 [[package]]
 name = "os_str_bytes"
-version = "2.4.0"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afb2e1c3ee07430c2cf76151675e583e0f19985fa6efae47d6848a3e2c824f85"
+checksum = "e293568965aea261bdf010db17df7030e3c9a275c415d51d6112f7cf9b7af012"
 
 [[package]]
 name = "parking_lot"
@@ -1290,7 +1331,8 @@ dependencies = [
 [[package]]
 name = "serde_yaml"
 version = "0.8.17"
-source = "git+https://github.com/CertainLach/serde-yaml.git?branch=feature/old-octals-quirk#9b3c471745a9f0bdb0903f4e725dd66c7e04c097"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15654ed4ab61726bf918a39cb8d98a2e2995b002387807fa6ba58fdf7f59bb23"
 dependencies = [
  "dtoa",
  "linked-hash-map",
@@ -1299,10 +1341,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_yaml"
+name = "serde_yaml_with_quirks"
 version = "0.8.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15654ed4ab61726bf918a39cb8d98a2e2995b002387807fa6ba58fdf7f59bb23"
+checksum = "ab78ae867459b0f3ea5225ef8eab595f0edd65966559ed2845160b757b365d37"
 dependencies = [
  "dtoa",
  "linked-hash-map",
@@ -1400,9 +1442,9 @@ dependencies = [
 
 [[package]]
 name = "textwrap"
-version = "0.13.2"
+version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cdcf6b66102d38821c33eea2bf1e8b7bd738072171cbf8a0683fbb46fcb8b0b"
+checksum = "cd05616119e612a8041ef58f2b578906cc2531a6069047ae092cfb86a325d835"
 dependencies = [
  "unicode-width",
 ]
@@ -1529,9 +1571,9 @@ dependencies = [
 
 [[package]]
 name = "tower"
-version = "0.4.5"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "713c629c07a3a97f741c140e474e7304294fabec66a43a33f0832e98315ab07f"
+checksum = "f715efe02c0862926eb463e49368d38ddb119383475686178e32e26d15d06a66"
 dependencies = [
  "futures-core",
  "futures-util",
