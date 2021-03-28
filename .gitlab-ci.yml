@@ -1,0 +1,20 @@
+image: nixos/nix:latest
+
+build:
+  stage: build
+
+  before_script:
+    - nix-channel --update
+    - nix-env --install --attr
+        nixpkgs.git
+        nixpkgs.gnumake
+        nixpkgs.nixFlakes
+
+  script:
+    - nix build .
+
+  artifacts:
+    name: "$CI_COMMIT_REF_SLUG"
+    expire_in: 1 week
+    paths:
+      - result/
