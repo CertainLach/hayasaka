@@ -1,5 +1,3 @@
-#![feature(bindings_after_at)]
-
 mod apply;
 mod helm;
 

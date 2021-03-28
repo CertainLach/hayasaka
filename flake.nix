@@ -8,8 +8,8 @@
   outputs = { self, nixpkgs, flake-utils, nixpkgs-mozilla, cargo2nix }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        rustChannel = "nightly";
-        rustChannelSha256 = "sha256-ikeROqlNBNVIR4NTDotgRrLc2DE6RiO8VKBfMSl5DaE=";
+        rustChannel = "1.51.0";
+        rustChannelSha256 = "sha256-+EFKtTDUlFY0aUXdSvrz7tAhf5/GsqyVOp8skXGTEJM=";
         pkgs = import nixpkgs {
           inherit system;
           overlays = [
