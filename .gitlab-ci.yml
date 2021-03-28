@@ -9,9 +9,15 @@ build:
         nixpkgs.git
         nixpkgs.gnumake
         nixpkgs.nixFlakes
+        nixpkgs.cachix
+        nixpkgs.jq
+    - cachix use $CACHIX_CACHE_NAME
 
   script:
     - nix --experimental-features "nix-command flakes" build .
+
+  after_script:
+    - nix flake archive --json | jq -r '.path,(.inputs|to_entries[].value.path)' | cachix push $CACHIX_CACHE_NAME
 
   artifacts:
     name: "$CI_COMMIT_REF_SLUG"
