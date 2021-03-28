@@ -11,7 +11,7 @@ build:
         nixpkgs.nixFlakes
 
   script:
-    - nix build .
+    - nix --experimental-features "nix-command flakes" build .
 
   artifacts:
     name: "$CI_COMMIT_REF_SLUG"
