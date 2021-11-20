@@ -1,33 +1,12 @@
 {
   "nodes": {
-    "cargo2nix": {
-      "inputs": {
-        "nixpkgs": "nixpkgs",
-        "nixpkgs-mozilla": "nixpkgs-mozilla",
-        "utils": "utils"
-      },
-      "locked": {
-        "lastModified": 1616851404,
-        "narHash": "sha256-uUKqGHCQGBJi9EGE9sZBclh6KpNKej/nJCRoXBrwEHA=",
-        "owner": "onsails",
-        "repo": "cargo2nix",
-        "rev": "a9956591b799ba397faa588d60b8b7bade316850",
-        "type": "github"
-      },
-      "original": {
-        "owner": "onsails",
-        "ref": "flake",
-        "repo": "cargo2nix",
-        "type": "github"
-      }
-    },
     "flake-utils": {
       "locked": {
-        "lastModified": 1614513358,
-        "narHash": "sha256-LakhOx3S1dRjnh0b5Dg3mbZyH0ToC9I8Y2wKSkBaTzU=",
+        "lastModified": 1637014545,
+        "narHash": "sha256-26IZAc5yzlD9FlDT54io1oqG/bBoyka+FJk5guaX4x4=",
         "owner": "numtide",
         "repo": "flake-utils",
-        "rev": "5466c5bbece17adaab2d82fae80b46e807611bf3",
+        "rev": "bba5dcc8e0b20ab664967ad83d24d64cb64ec4f4",
         "type": "github"
       },
       "original": {
@@ -38,58 +17,10 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1612611597,
-        "narHash": "sha256-Z9L7stUq2t5ugZ+kTOKuNYOz+3wukFQHMhz0VnQgmE0=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "671fd3a3c13383cc1d7805e2b7854b5226205d07",
-        "type": "github"
-      },
-      "original": {
-        "id": "nixpkgs",
-        "type": "indirect"
-      }
-    },
-    "nixpkgs-mozilla": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1603906276,
-        "narHash": "sha256-RsNPnEKd7BcogwkqhaV5kI/HuNC4flH/OQCC/4W5y/8=",
-        "owner": "mozilla",
-        "repo": "nixpkgs-mozilla",
-        "rev": "8c007b60731c07dd7a052cce508de3bb1ae849b4",
-        "type": "github"
-      },
-      "original": {
-        "owner": "mozilla",
-        "repo": "nixpkgs-mozilla",
-        "type": "github"
-      }
-    },
-    "nixpkgs-mozilla_2": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1603906276,
-        "narHash": "sha256-RsNPnEKd7BcogwkqhaV5kI/HuNC4flH/OQCC/4W5y/8=",
-        "owner": "mozilla",
-        "repo": "nixpkgs-mozilla",
-        "rev": "8c007b60731c07dd7a052cce508de3bb1ae849b4",
-        "type": "github"
-      },
-      "original": {
-        "owner": "mozilla",
-        "repo": "nixpkgs-mozilla",
-        "type": "github"
-      }
-    },
-    "nixpkgs_2": {
-      "locked": {
-        "lastModified": 1615659022,
-        "narHash": "sha256-/16k8P9WHSfoMhzXgYEarouTsiOMfchdlAymsBtsZeI=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "c30a9fd9460edbc8a0f3e8b91dca05e4a13d25ad",
-        "type": "github"
+        "lastModified": 1637362615,
+        "narHash": "sha256-nimFa/p7OrMQLoeo+zKE8+FY1KUL/QCOqz3YX9HS5vA=",
+        "path": "/nix/store/g7s945ha2dnxk5l1cxc9p2m79qx7bdhv-source",
+        "type": "path"
       },
       "original": {
         "id": "nixpkgs",
@@ -98,24 +29,24 @@
     },
     "root": {
       "inputs": {
-        "cargo2nix": "cargo2nix",
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs_2",
-        "nixpkgs-mozilla": "nixpkgs-mozilla_2"
+        "nixpkgs": "nixpkgs",
+        "rust-overlay": "rust-overlay"
       }
     },
-    "utils": {
+    "rust-overlay": {
+      "flake": false,
       "locked": {
-        "lastModified": 1610051610,
-        "narHash": "sha256-U9rPz/usA1/Aohhk7Cmc2gBrEEKRzcW4nwPWMPwja4Y=",
-        "owner": "numtide",
-        "repo": "flake-utils",
-        "rev": "3982c9903e93927c2164caa727cd3f6a0e6d14cc",
+        "lastModified": 1637374599,
+        "narHash": "sha256-mIzHDYJmUMPO5TLJuYEfZ0suCIAbEEJ0SfaGRuPruLE=",
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "rev": "2f57158fe403075e918fb05a689313b227883be8",
         "type": "github"
       },
       "original": {
-        "owner": "numtide",
-        "repo": "flake-utils",
+        "owner": "oxalica",
+        "repo": "rust-overlay",
         "type": "github"
       }
     }

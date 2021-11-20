@@ -149,7 +149,7 @@ async fn main_real() -> Result<()> {
     let mut config = Config::infer()
         .await
         .map_err(|e| anyhow!("failed to load config: {}", e))?;
-    config.default_ns = opts.deploy.name.clone();
+    config.default_namespace = opts.deploy.name.clone();
     let client =
         kube::Client::try_from(config).map_err(|e| anyhow!("failed to construct client: {}", e))?;
 
