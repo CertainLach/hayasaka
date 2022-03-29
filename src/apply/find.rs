@@ -10,7 +10,7 @@ use serde::Deserialize;
 pub type RuntimeTypeData = BTreeMap<ObjectKind, ObjectData>;
 
 /// Represents object runtime type
-#[derive(Clone, Debug, Deserialize, Eq)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash)]
 pub struct ObjectKind {
     // extensions/v1
     #[serde(rename = "apiVersion")]
@@ -59,7 +59,7 @@ impl Display for ObjectKind {
 }
 
 /// Represents object location
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize, Hash)]
 pub struct ObjectLocation {
     pub name: String,
     pub namespace: Option<String>,
@@ -76,7 +76,7 @@ impl Display for ObjectLocation {
 }
 
 /// Represents unique object
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize, Hash)]
 pub struct Object {
     #[serde(flatten)]
     pub kind: ObjectKind,

@@ -1,5 +1,5 @@
 use crate::{Element, Error, Path, Result};
-use duplicate::duplicate;
+use duplicate::duplicate_item;
 use serde_json::Value;
 
 fn matches_select(item: &Value, key: &str, value: &Value) -> bool {
@@ -25,7 +25,7 @@ pub trait FieldpathExt: Sized {
     fn has_path(&self, path: &Path) -> bool;
 }
 impl FieldpathExt for Value {
-    #[duplicate(
+    #[duplicate_item(
         this_method method reference(type) ret_type;
         [get_comp] [get] [&type] [&Self];
         [get_comp_mut] [get_mut] [&mut type] [&mut Self]
@@ -56,7 +56,7 @@ impl FieldpathExt for Value {
         }
     }
 
-    #[duplicate(
+    #[duplicate_item(
         this_method method reference(type) ret_type;
         [get_path] [get_comp] [&type] [&Self];
         [get_path_mut] [get_comp_mut] [&mut type] [&mut Self]

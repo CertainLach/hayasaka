@@ -1,5 +1,6 @@
 mod find;
 mod parse;
+mod topsort;
 
 use fieldpath::{path, Element, FieldpathExt, Path, PathBuf};
 use find::{Object, ObjectKind, RuntimeTypeData};
@@ -79,17 +80,17 @@ async fn apply_internal_resolve_conflicts(
 ) -> Result<()> {
     let object: Object = serde_json::from_value(target.clone())?;
 
-    log::trace!("Dry-run apply for {}", object);
-
     let base_url = make_url(namespace, &object, types);
     // dry run
     let dry_run_base_url = format!("{}?fieldManager={}&dryRun=All", base_url, manager,);
 
+    log::trace!("Getting old version of {}", object);
     let get_req = http::Request::get(&base_url)
         .header("Accept", "application/json")
         .body(vec![])
         .map_err(kube::Error::HttpError)?;
 
+    log::trace!("Dry-run apply for {}", object);
     let patch_req = http::Request::patch(&dry_run_base_url)
         .header("Accept", "application/json")
         .header("Content-Type", "application/apply-patch+yaml")
@@ -120,9 +121,7 @@ async fn apply_internal_resolve_conflicts(
         v
     });
 
-    log::trace!("= {}", serde_json::to_string_pretty(&old_obj).unwrap());
-
-    log::trace!("Running dry-run");
+    log::trace!("Running dry-run for {}", dry_run_base_url);
     match client.request(patch_req).await {
         Ok(v) => {
             let _result: Value = v;
@@ -227,7 +226,9 @@ pub async fn apply_multi(
 
     prune: bool,
 ) -> Result<()> {
+    log::info!("Getting types");
     let types = find::list_apis(client.clone()).await?;
+    log::info!("Discovered {} types", types.len());
 
     let mut created = BTreeSet::new();
 
@@ -258,6 +259,7 @@ pub async fn apply_multi(
         let unstructured: Object =
             serde_json::from_value(item.clone()).map_err(Error::ObjectParseFailed)?;
 
+        log::info!("Checking conflicts in {}", unstructured);
         apply_internal_resolve_conflicts(
             client.clone(),
             &namespace,
@@ -272,20 +274,21 @@ pub async fn apply_multi(
     }
 
     for item in target {
+        let unstructured: Object =
+            serde_json::from_value(item.clone()).map_err(Error::ObjectParseFailed)?;
+
+        log::info!("Force applying {}", unstructured);
         apply_internal_force(client.clone(), &namespace, &manager, item, &types).await?;
     }
 
     if prune {
+        log::info!("Pruning");
         let found = find::find_all_labeled_items(client.clone(), label).await?;
         let to_remove = found.difference(&created);
 
         for item in to_remove {
             // Endpoints copies Service labels
             if item.kind.api_version == "v1" && item.kind.kind == "Endpoints" {
-                continue;
-            } else if item.kind.api_version == "discovery.k8s.io/v1beta1"
-                && item.kind.kind == "EndpointSlice"
-            {
                 continue;
             }
 
